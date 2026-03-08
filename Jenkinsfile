@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         // ── Change these two lines to match your DockerHub username and repo name
-        IMAGE_NAME   = 'amoljadhav1997/claude-local'
-        GITHUB_REPO  = 'github.com/AmolJadhav97/claude-local.git'
+        IMAGE_NAME   = 'amoljadhav1997/local-claude'
+        GITHUB_REPO  = 'github.com/AmolJadhav97/local-claude.git'
 
         // ── These are injected from Jenkins Credentials — never hardcoded
         IMAGE_TAG    = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(7)}"
