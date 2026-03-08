@@ -99,7 +99,7 @@ pipeline {
         stage('Update Kubernetes Manifest') {
             steps {
                 withCredentials([string(
-                    credentialsId: 'github-pat',
+                    credentialsId: 'github',
                     variable: 'GH_TOKEN'
                 )]) {
                     sh """
