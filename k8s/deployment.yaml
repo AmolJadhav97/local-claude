@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claude-local
+  namespace: claude-local
+  labels:
+    app: claude-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: claude-local
+  template:
+    metadata:
+      labels:
+        app: claude-local
+    spec:
+      # ── Security: run as non-root user
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: claude-local
+          # ── Jenkins CI updates this image tag automatically on every frontend push
+          image: amoljadhav1997/claude-local:latest
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+
+          # ── API key injected from Kubernetes Secret — never in code or GitHub
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: claude-local-secrets
+                  key: ANTHROPIC_API_KEY
+            - name: PORT
+              value: "3000"
+            - name: DATA_DIR
+              value: "/data"
+
+          # ── Persistent storage for SQLite conversation history
+          volumeMounts:
+            - name: data
+              mountPath: /data
+
+          # ── Resource limits to keep your Mac happy
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          # ── Health checks
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          # ── Security: drop all Linux capabilities
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: claude-local-pvc

@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  claude-local:
+    build: .
+    container_name: claude-local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"        # Access via http://localhost:3000
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - PORT=3000
+      - DATA_DIR=/data
+    volumes:
+      - claude-data:/data   # Persistent conversation history
+    networks:
+      - claude-net
+
+volumes:
+  claude-data:
+    driver: local            # Data stored only on YOUR machine
+
+networks:
+  claude-net:
+    driver: bridge
+    internal: false          # Needs internet for Anthropic API calls only

@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: claude-local
+  namespace: argocd
+  # ── Auto-delete resources from cluster when this app is deleted
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    # ── Change this to your actual GitHub repo URL
+    repoURL: https://github.com/AmolJadhav97/claude-local.git
+    targetRevision: main
+    # ── ArgoCD watches only the k8s/ folder
+    path: k8s
+
+  destination:
+    # ── Deploy to your local KIND cluster
+    server: https://kubernetes.default.svc
+    namespace: claude-local
+
+  syncPolicy:
+    # ── Automated sync: ArgoCD detects manifest changes and deploys automatically
+    automated:
+      prune: true       # Remove resources deleted from Git
+      selfHeal: true    # Fix any manual cluster changes back to Git state
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

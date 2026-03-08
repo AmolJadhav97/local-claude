@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: claude-local
+  namespace: claude-local
+  labels:
+    app: claude-local
+spec:
+  # ── ClusterIP = internal only, no external port exposed on your Mac
+  # ── Access via: kubectl port-forward svc/claude-local 3000:3000 -n claude-local
+  type: ClusterIP
+  selector:
+    app: claude-local
+  ports:
+    - name: http
+      protocol: TCP
+      port: 3000
+      targetPort: 3000

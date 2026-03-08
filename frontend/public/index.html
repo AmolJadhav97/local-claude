@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Local — Personal AI Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400;500&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --surface3: #1f1f28;
+    --border: rgba(255,255,255,0.07);
+    --border-light: rgba(255,255,255,0.12);
+    --text: #e8e8f0;
+    --text-muted: #6b6b85;
+    --text-dim: #3a3a52;
+    --accent: #7c6af7;
+    --accent-glow: rgba(124, 106, 247, 0.15);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --sidebar-w: 260px;
+    --header-h: 56px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Geist', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ---- LAYOUT ---- */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ---- LEFT PANEL ---- */
+  .left-panel {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.3s ease;
+  }
+  .logo {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-mark {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, #7c6af7, #a78bfa);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .logo-text { font-family: 'Instrument Serif', serif; font-size: 16px; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 10px; color: var(--text-muted); font-family: 'Geist Mono', monospace; }
+
+  /* Sections nav */
+  .sections-label {
+    padding: 14px 18px 8px;
+    font-size: 10px;
+    font-family: 'Geist Mono', monospace;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .sections-list { flex-shrink: 0; overflow-y: auto; }
+  .section-btn {
+    width: 100%;
+    padding: 9px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-family: 'Geist', sans-serif;
+    text-align: left;
+    border-radius: 0;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .section-btn:hover { background: var(--surface2); color: var(--text); }
+  .section-btn.active { background: var(--surface2); color: var(--text); }
+  .section-btn.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 60%;
+    border-radius: 0 2px 2px 0;
+    background: var(--section-color, var(--accent));
+  }
+  .section-icon { font-size: 16px; flex-shrink: 0; }
+  .section-name { flex: 1; font-weight: 400; }
+  .section-desc { font-size: 10.5px; color: var(--text-dim); margin-top: 1px; }
+
+  .add-section-btn {
+    margin: 8px 16px;
+    padding: 8px 12px;
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-dim);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Geist', sans-serif;
+    display: flex; align-items: center; gap: 6px;
+    transition: all 0.15s;
+  }
+  .add-section-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Conversations list */
+  .conv-area {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--border);
+  }
+  .conv-header {
+    padding: 12px 16px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .conv-label {
+    font-size: 10px;
+    font-family: 'Geist Mono', monospace;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .new-chat-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-light);
+    background: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'Geist', sans-serif;
+    display: flex; align-items: center; gap: 4px;
+    transition: all 0.15s;
+  }
+  .new-chat-btn:hover { background: var(--surface3); color: var(--text); }
+  .conv-list { flex: 1; overflow-y: auto; padding: 4px 8px; }
+  .conv-item {
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.12s;
+    group: true;
+  }
+  .conv-item:hover { background: var(--surface2); }
+  .conv-item.active { background: var(--surface3); }
+  .conv-title {
+    flex: 1;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+  }
+  .conv-item.active .conv-title { color: var(--text); }
+  .conv-delete {
+    opacity: 0;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 12px;
+    transition: all 0.12s;
+  }
+  .conv-item:hover .conv-delete { opacity: 1; }
+  .conv-delete:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+  .conv-empty { padding: 16px 12px; font-size: 12px; color: var(--text-dim); text-align: center; }
+
+  /* ---- MAIN AREA ---- */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  /* Header */
+  .chat-header {
+    height: var(--header-h);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .section-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid transparent;
+  }
+  .chat-title {
+    font-size: 13px;
+    color: var(--text-muted);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 6px #22c55e;
+  }
+  .header-actions { display: flex; gap: 8px; }
+  .header-btn {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'Geist', sans-serif;
+    transition: all 0.12s;
+  }
+  .header-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border-light); }
+
+  /* Messages */
+  .messages-wrap { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 0; scroll-behavior: smooth; }
+  
+  /* Welcome screen */
+  .welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 40px;
+    text-align: center;
+  }
+  .welcome-icon {
+    font-size: 52px;
+    filter: drop-shadow(0 0 24px var(--section-color, var(--accent)));
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .welcome-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 28px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+  .welcome-subtitle { font-size: 14px; color: var(--text-muted); max-width: 380px; line-height: 1.7; }
+  .welcome-prompts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; max-width: 500px; }
+  .prompt-chip {
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border-light);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .prompt-chip:hover {
+    background: var(--surface3);
+    color: var(--text);
+    border-color: var(--section-color, var(--accent));
+    transform: translateY(-1px);
+  }
+
+  /* Messages */
+  .msg { display: flex; gap: 12px; padding: 14px 0; }
+  .msg + .msg { border-top: 1px solid var(--border); }
+  .msg-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    margin-top: 2px;
+  }
+  .msg.user .msg-avatar { background: var(--surface3); border: 1px solid var(--border-light); font-size: 13px; color: var(--text-muted); }
+  .msg.assistant .msg-avatar { font-size: 16px; }
+  .msg-content { flex: 1; min-width: 0; }
+  .msg-role { font-size: 11px; color: var(--text-dim); font-family: 'Geist Mono', monospace; margin-bottom: 6px; }
+  .msg-text {
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg-text code {
+    background: var(--surface3);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 12px;
+    color: #a78bfa;
+  }
+  .msg-text pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 10px 0;
+  }
+  .msg-text pre code {
+    background: none;
+    padding: 0;
+    color: #88c0d0;
+    font-size: 13px;
+  }
+  .msg-text strong { color: #f0f0ff; font-weight: 600; }
+  .msg-text em { color: #c4b5fd; }
+  .msg-text ul, .msg-text ol { padding-left: 20px; margin: 6px 0; }
+  .msg-text li { margin: 3px 0; }
+  .msg-text h1,.msg-text h2,.msg-text h3 { font-family: 'Instrument Serif', serif; margin: 12px 0 6px; color: #f0f0ff; }
+  .msg-text blockquote { border-left: 3px solid var(--border-light); padding-left: 14px; color: var(--text-muted); margin: 8px 0; }
+  .msg-text a { color: var(--accent); text-decoration: underline; }
+  .msg-text hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+  /* Typing indicator */
+  .typing-indicator { display: flex; gap: 4px; padding: 8px 0; align-items: center; }
+  .typing-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,60%,100% { opacity: 0.3; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1); } }
+
+  /* ---- INPUT AREA ---- */
+  .input-area {
+    border-top: 1px solid var(--border);
+    padding: 16px 24px 20px;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .input-box {
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 10px 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input-box:focus-within {
+    border-color: var(--section-color, var(--accent));
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  #msg-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Geist', sans-serif;
+    font-size: 14px;
+    resize: none;
+    max-height: 160px;
+    min-height: 22px;
+    line-height: 1.6;
+  }
+  #msg-input::placeholder { color: var(--text-dim); }
+  .send-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    border: none;
+    background: var(--section-color, var(--accent));
+    color: white;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.15s, transform 0.12s;
+    flex-shrink: 0;
+    font-size: 15px;
+  }
+  .send-btn:hover { opacity: 0.85; transform: scale(1.05); }
+  .send-btn:active { transform: scale(0.95); }
+  .send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+  .input-hint { font-size: 11px; color: var(--text-dim); margin-top: 8px; text-align: center; font-family: 'Geist Mono', monospace; }
+
+  /* ---- MODAL ---- */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 28px;
+    width: 480px;
+    max-width: 90vw;
+    transform: scale(0.95);
+    transition: transform 0.2s;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  }
+  .modal-overlay.open .modal { transform: scale(1); }
+  .modal h2 { font-family: 'Instrument Serif', serif; font-size: 22px; margin-bottom: 20px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 11px; color: var(--text-muted); font-family: 'Geist Mono', monospace; margin-bottom: 6px; letter-spacing: 0.5px; }
+  .form-input, .form-textarea, .form-select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Geist', sans-serif;
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-textarea:focus { border-color: var(--accent); }
+  .form-textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
+  .form-row { display: flex; gap: 10px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .btn-primary {
+    padding: 9px 20px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 13px;
+    font-family: 'Geist', sans-serif;
+    cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-secondary {
+    padding: 9px 20px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    background: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-family: 'Geist', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { background: var(--surface2); color: var(--text); }
+
+  /* ---- API KEY BANNER ---- */
+  .api-banner {
+    background: linear-gradient(90deg, rgba(239,68,68,0.1), rgba(239,68,68,0.05));
+    border-bottom: 1px solid rgba(239,68,68,0.2);
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #fca5a5;
+    flex-shrink: 0;
+  }
+  .api-banner code { font-family: 'Geist Mono', monospace; background: rgba(239,68,68,0.15); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+  /* ---- CONFIG PANEL ---- */
+  .config-view {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+    gap: 16px;
+  }
+  .config-view.active { display: flex; }
+  .config-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    max-width: 440px;
+    width: 100%;
+    text-align: left;
+  }
+  .config-card h3 { font-family: 'Instrument Serif', serif; font-size: 18px; margin-bottom: 12px; }
+  .config-card p { font-size: 13px; color: var(--text-muted); line-height: 1.7; margin-bottom: 12px; }
+  .config-card code { display: block; background: var(--surface3); padding: 10px 14px; border-radius: var(--radius-sm); font-family: 'Geist Mono', monospace; font-size: 12px; color: #88c0d0; margin: 8px 0; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="left-panel">
+    <div class="logo">
+      <div class="logo-mark">✦</div>
+      <div>
+        <div class="logo-text">Claude Local</div>
+        <div class="logo-sub">personal ai hub</div>
+      </div>
+    </div>
+
+    <div class="sections-label">Experts</div>
+    <div class="sections-list" id="sections-list"></div>
+    <button class="add-section-btn" onclick="openAddSection()">
+      <span>＋</span> Add Expert
+    </button>
+
+    <div class="conv-area">
+      <div class="conv-header">
+        <span class="conv-label">Chats</span>
+        <button class="new-chat-btn" onclick="newChat()">＋ New</button>
+      </div>
+      <div class="conv-list" id="conv-list">
+        <div class="conv-empty">Select an expert to start</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div class="main">
+    <!-- API Key Banner (hidden by default) -->
+    <div class="api-banner" id="api-banner" style="display:none">
+      ⚠️ API key not set. Add <code>ANTHROPIC_API_KEY=your_key</code> to your <code>.env</code> file and restart.
+    </div>
+
+    <!-- Chat Header -->
+    <div class="chat-header" id="chat-header">
+      <div class="section-badge" id="section-badge">
+        <span id="header-icon">✦</span>
+        <span id="header-name">Select an Expert</span>
+      </div>
+      <div class="chat-title" id="conv-title">Start a new conversation</div>
+      <div id="status-dot" class="status-dot" style="display:none"></div>
+      <div class="header-actions">
+        <button class="header-btn" onclick="clearChat()" id="clear-btn" style="display:none">Clear</button>
+        <button class="header-btn" onclick="editSection()" id="edit-btn" style="display:none">Edit Expert</button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="messages-wrap" id="messages-wrap">
+      <div class="welcome" id="welcome-screen">
+        <div class="welcome-icon">✦</div>
+        <div class="welcome-title">Amol's Personal AI Hub</div>
+        <div class="welcome-subtitle">Select an expert from the sidebar to begin. Each expert remembers your full conversation history.</div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="input-box">
+        <textarea id="msg-input" placeholder="Message your expert..." rows="1" disabled></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>↑</button>
+      </div>
+      <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT SECTION MODAL -->
+<div class="modal-overlay" id="section-modal">
+  <div class="modal">
+    <h2 id="modal-title">Add Expert</h2>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 70px">
+        <label class="form-label">ICON</label>
+        <input class="form-input" id="f-icon" value="🤖" style="font-size:20px; text-align:center; padding:6px 4px" maxlength="4">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label class="form-label">NAME</label>
+        <input class="form-input" id="f-name" placeholder="e.g. Fitness Coach">
+      </div>
+      <div class="form-group" style="flex:0 0 90px">
+        <label class="form-label">COLOR</label>
+        <input type="color" class="form-input" id="f-color" value="#7c6af7" style="height:38px; padding:4px 6px; cursor:pointer">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">SHORT DESCRIPTION</label>
+      <input class="form-input" id="f-desc" placeholder="What does this expert help with?">
+    </div>
+    <div class="form-group">
+      <label class="form-label">SYSTEM PROMPT</label>
+      <textarea class="form-textarea" id="f-prompt" placeholder="Describe the expert's role, personality, expertise, and how they should interact with you..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveSection()">Save Expert</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- STATE ----
+let state = {
+  sections: [],
+  activeSection: null,
+  conversations: [],
+  activeConv: null,
+  messages: [],
+  isStreaming: false,
+  editingSectionId: null,
+  apiOk: true
+};
+
+// ---- INIT ----
+async function init() {
+  await checkHealth();
+  await loadSections();
+}
+
+async function checkHealth() {
+  try {
+    const r = await fetch('/api/health');
+    const d = await r.json();
+    if (!d.apiKeyConfigured) {
+      document.getElementById('api-banner').style.display = 'flex';
+      state.apiOk = false;
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function loadSections() {
+  const r = await fetch('/api/sections');
+  state.sections = await r.json();
+  renderSections();
+}
+
+function renderSections() {
+  const list = document.getElementById('sections-list');
+  list.innerHTML = '';
+  for (const s of state.sections) {
+    const btn = document.createElement('button');
+    btn.className = 'section-btn' + (state.activeSection?.id === s.id ? ' active' : '');
+    btn.style.setProperty('--section-color', s.color);
+    btn.innerHTML = `
+      <span class="section-icon">${s.icon}</span>
+      <div>
+        <div class="section-name">${s.name}</div>
+        <div class="section-desc">${s.description || ''}</div>
+      </div>
+    `;
+    btn.onclick = () => selectSection(s);
+    list.appendChild(btn);
+  }
+}
+
+async function selectSection(section) {
+  state.activeSection = section;
+  state.activeConv = null;
+  state.messages = [];
+
+  // Update sidebar highlight
+  renderSections();
+
+  // Update header
+  const badge = document.getElementById('section-badge');
+  badge.style.backgroundColor = section.color + '18';
+  badge.style.borderColor = section.color + '40';
+  badge.style.color = section.color;
+  document.getElementById('header-icon').textContent = section.icon;
+  document.getElementById('header-name').textContent = section.name;
+  document.getElementById('conv-title').textContent = 'New conversation';
+  document.getElementById('status-dot').style.display = 'block';
+  document.getElementById('edit-btn').style.display = '';
+  document.getElementById('clear-btn').style.display = 'none';
+
+  // Update CSS var for input focus color
+  document.documentElement.style.setProperty('--section-color', section.color);
+
+  // Enable input
+  document.getElementById('msg-input').disabled = false;
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('msg-input').placeholder = `Ask your ${section.name}...`;
+
+  // Load conversations
+  await loadConversations(section.id);
+
+  // Show welcome screen
+  renderWelcome(section);
+}
+
+async function loadConversations(sectionId) {
+  const r = await fetch(`/api/conversations/${sectionId}`);
+  state.conversations = await r.json();
+  renderConversations();
+}
+
+function renderConversations() {
+  const list = document.getElementById('conv-list');
+  if (!state.conversations.length) {
+    list.innerHTML = '<div class="conv-empty">No chats yet. Send a message to start.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const c of state.conversations) {
+    const item = document.createElement('div');
+    item.className = 'conv-item' + (state.activeConv?.id === c.id ? ' active' : '');
+    item.innerHTML = `
+      <span class="conv-title">${escapeHtml(c.title || 'Untitled')}</span>
+      <button class="conv-delete" onclick="deleteConv('${c.id}', event)" title="Delete">✕</button>
+    `;
+    item.onclick = (e) => { if (!e.target.classList.contains('conv-delete')) loadConv(c); };
+    list.appendChild(item);
+  }
+}
+
+async function newChat() {
+  if (!state.activeSection) return;
+  state.activeConv = null;
+  state.messages = [];
+  renderWelcome(state.activeSection);
+  document.getElementById('conv-title').textContent = 'New conversation';
+  document.getElementById('clear-btn').style.display = 'none';
+  renderConversations();
+}
+
+async function loadConv(conv) {
+  state.activeConv = conv;
+  const r = await fetch(`/api/messages/${conv.id}`);
+  const msgs = await r.json();
+  state.messages = msgs;
+  document.getElementById('conv-title').textContent = conv.title || 'Conversation';
+  document.getElementById('clear-btn').style.display = '';
+  renderMessages();
+  renderConversations();
+  scrollBottom();
+}
+
+async function deleteConv(id, e) {
+  e.stopPropagation();
+  if (!confirm('Delete this conversation?')) return;
+  await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
+  if (state.activeConv?.id === id) {
+    state.activeConv = null;
+    state.messages = [];
+    renderWelcome(state.activeSection);
+  }
+  await loadConversations(state.activeSection.id);
+}
+
+function renderWelcome(section) {
+  const wrap = document.getElementById('messages-wrap');
+  const prompts = getStarterPrompts(section.id);
+  wrap.innerHTML = `
+    <div class="welcome" style="--section-color:${section.color}">
+      <div class="welcome-icon">${section.icon}</div>
+      <div class="welcome-title">Your ${section.name}</div>
+      <div class="welcome-subtitle">${section.description || 'Ask me anything — I remember everything we discuss in this session.'}</div>
+      ${prompts.length ? `<div class="welcome-prompts">${prompts.map(p => `<div class="prompt-chip" onclick="usePrompt(this.textContent)">${p}</div>`).join('')}</div>` : ''}
+    </div>
+  `;
+}
+
+function getStarterPrompts(id) {
+  const map = {
+    nutritionist: ["Create a 7-day meal plan for weight loss", "What should I eat before and after workouts?", "I'm vegetarian, how do I get enough protein?", "Help me reduce sugar cravings"],
+    therapist: ["I'm feeling overwhelmed with work", "How do I deal with anxiety?", "I have trouble setting boundaries", "Help me build better habits"],
+    medical: ["What causes persistent headaches?", "How do I interpret my blood test results?", "Explain the difference between Type 1 and Type 2 diabetes", "What should I know about my medication?"],
+    jobhunter: ["Review my resume for a software engineer role", "How do I answer 'tell me about yourself'?", "Help me negotiate a higher salary", "Write a cold email to a hiring manager"],
+    finance: ["Help me create a monthly budget", "Explain index funds for beginners", "How do I get out of credit card debt?", "Should I prioritize 401k or emergency fund?"],
+    legal: ["What are my rights as a tenant?", "What should I know before signing a contract?", "How does small claims court work?", "What is an NDA and should I sign it?"]
+  };
+  return map[id] || [];
+}
+
+function usePrompt(text) {
+  document.getElementById('msg-input').value = text;
+  sendMessage();
+}
+
+function renderMessages() {
+  const wrap = document.getElementById('messages-wrap');
+  wrap.innerHTML = '';
+  for (const m of state.messages) {
+    appendMessage(m.role, m.content);
+  }
+}
+
+function appendMessage(role, content, streaming = false) {
+  const wrap = document.getElementById('messages-wrap');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const icon = role === 'user' ? 'U' : (state.activeSection?.icon || '✦');
+  div.innerHTML = `
+    <div class="msg-avatar">${icon}</div>
+    <div class="msg-content">
+      <div class="msg-role">${role === 'user' ? 'You' : (state.activeSection?.name || 'Assistant')}</div>
+      <div class="msg-text">${streaming ? '' : renderMarkdown(content)}</div>
+    </div>
+  `;
+  wrap.appendChild(div);
+  return div.querySelector('.msg-text');
+}
+
+function renderMarkdown(text) {
+  if (!text) return '';
+  // Escape HTML first
+  let t = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Code blocks
+  t = t.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${code.trimEnd()}</code></pre>`);
+  // Inline code
+  t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Headers
+  t = t.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  t = t.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  t = t.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // Bold / italic
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // Unordered lists
+  t = t.replace(/^[-*•] (.+)$/gm, '<li>$1</li>');
+  t = t.replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`);
+  // Ordered lists
+  t = t.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // Horizontal rule
+  t = t.replace(/^---$/gm, '<hr>');
+  // Blockquote
+  t = t.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+  // Links
+  t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  // Newlines
+  t = t.replace(/\n/g, '<br>');
+  return t;
+}
+
+async function sendMessage() {
+  if (state.isStreaming) return;
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text || !state.activeSection) return;
+
+  input.value = '';
+  autoResize(input);
+
+  // Create conversation if needed
+  if (!state.activeConv) {
+    const r = await fetch('/api/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ section_id: state.activeSection.id, title: text.substring(0, 60) })
+    });
+    state.activeConv = await r.json();
+    await loadConversations(state.activeSection.id);
+  }
+
+  // Clear welcome, add user message
+  const wrap = document.getElementById('messages-wrap');
+  if (wrap.querySelector('.welcome')) wrap.innerHTML = '';
+  appendMessage('user', text);
+  document.getElementById('clear-btn').style.display = '';
+
+  // Add typing indicator
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'msg assistant';
+  typingDiv.id = 'typing';
+  typingDiv.innerHTML = `
+    <div class="msg-avatar">${state.activeSection.icon}</div>
+    <div class="msg-content">
+      <div class="msg-role">${state.activeSection.name}</div>
+      <div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+    </div>
+  `;
+  wrap.appendChild(typingDiv);
+  scrollBottom();
+
+  state.isStreaming = true;
+  document.getElementById('send-btn').disabled = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversation_id: state.activeConv.id,
+        section_id: state.activeSection.id,
+        message: text
+      })
+    });
+
+    // Remove typing, add streaming message
+    typingDiv.remove();
+    const textEl = appendMessage('assistant', '', true);
+    let rawText = '';
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const d = JSON.parse(line.slice(6));
+            if (d.error) { textEl.innerHTML = `<span style="color:#ef4444">Error: ${d.error}</span>`; break; }
+            if (d.text) {
+              rawText += d.text;
+              textEl.innerHTML = renderMarkdown(rawText);
+              scrollBottom();
+            }
+            if (d.done) {
+              if (d.title) document.getElementById('conv-title').textContent = d.title;
+              await loadConversations(state.activeSection.id);
+            }
+          } catch(e) {}
+        }
+      }
+    }
+
+  } catch(e) {
+    document.getElementById('typing')?.remove();
+    appendMessage('assistant', `Error connecting to server: ${e.message}`);
+  }
+
+  state.isStreaming = false;
+  document.getElementById('send-btn').disabled = false;
+  input.focus();
+  scrollBottom();
+}
+
+async function clearChat() {
+  if (!state.activeConv) return;
+  if (!confirm('Clear this conversation? This cannot be undone.')) return;
+  await fetch(`/api/conversations/${state.activeConv.id}`, { method: 'DELETE' });
+  state.activeConv = null;
+  state.messages = [];
+  renderWelcome(state.activeSection);
+  document.getElementById('clear-btn').style.display = 'none';
+  document.getElementById('conv-title').textContent = 'New conversation';
+  await loadConversations(state.activeSection.id);
+}
+
+// ---- SECTION MODAL ----
+function openAddSection() {
+  state.editingSectionId = null;
+  document.getElementById('modal-title').textContent = 'Add Expert';
+  document.getElementById('f-icon').value = '🤖';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-color').value = '#7c6af7';
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-prompt').value = '';
+  document.getElementById('section-modal').classList.add('open');
+}
+
+function editSection() {
+  if (!state.activeSection) return;
+  const s = state.activeSection;
+  state.editingSectionId = s.id;
+  document.getElementById('modal-title').textContent = 'Edit Expert';
+  document.getElementById('f-icon').value = s.icon;
+  document.getElementById('f-name').value = s.name;
+  document.getElementById('f-color').value = s.color;
+  document.getElementById('f-desc').value = s.description || '';
+  document.getElementById('f-prompt').value = s.system_prompt;
+  document.getElementById('section-modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('section-modal').classList.remove('open'); }
+
+async function saveSection() {
+  const name = document.getElementById('f-name').value.trim();
+  const prompt = document.getElementById('f-prompt').value.trim();
+  if (!name || !prompt) { alert('Name and system prompt are required.'); return; }
+
+  const data = {
+    id: state.editingSectionId || undefined,
+    name,
+    icon: document.getElementById('f-icon').value.trim() || '🤖',
+    color: document.getElementById('f-color').value,
+    description: document.getElementById('f-desc').value.trim(),
+    system_prompt: prompt
+  };
+
+  const r = await fetch('/api/sections', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const res = await r.json();
+  closeModal();
+  await loadSections();
+
+  // If editing active section, refresh
+  if (state.editingSectionId && state.activeSection?.id === state.editingSectionId) {
+    const updated = state.sections.find(s => s.id === state.editingSectionId);
+    if (updated) await selectSection(updated);
+  }
+}
+
+// ---- HELPERS ----
+function scrollBottom() {
+  const wrap = document.getElementById('messages-wrap');
+  setTimeout(() => wrap.scrollTop = wrap.scrollHeight, 50);
+}
+
+function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+// ---- KEYBOARD ----
+document.getElementById('msg-input').addEventListener('input', function() { autoResize(this); });
+document.getElementById('msg-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+document.getElementById('section-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ---- START ----
+init();
+</script>
+</body>
+</html>
