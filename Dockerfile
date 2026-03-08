@@ -1,17 +1,14 @@
 FROM node:20-alpine
 
+# Force upgrade all Alpine packages to get latest security patches
+RUN apk update && apk upgrade --no-cache
+
 WORKDIR /app
 
-# Copy package files
 COPY backend/package.json ./
-
-# Install dependencies
 RUN npm install --production
 
-# Copy backend source
 COPY backend/ ./
-
-# Copy frontend
 COPY frontend/ /app/../frontend/
 
 EXPOSE 3000
