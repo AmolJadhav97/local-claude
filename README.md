@@ -1,181 +1,387 @@
-# Claude Local — Personal AI Hub
+# Local AI Hub — Self-Hosted Personal AI Assistant
 
-A self-hosted, Docker-based frontend for Claude AI with multiple expert personas.  
-All conversation history stored **locally on your machine** — no third-party data storage.
+A fully local, privacy-first AI assistant that runs entirely on your machine.
+No API keys. No cloud. No subscriptions. Powered by **Ollama** + **Llama 3.1**.
+
+---
+
+## Architecture
+
+![Local AI Hub Architecture](assets/architecture.jpg)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          YOUR MAC                                    │
+│                                                                      │
+│   ┌─────────────────┐         ┌──────────────────────────────────┐  │
+│   │   OLLAMA        │         │   COLIMA (Linux VM)              │  │
+│   │                 │         │                                  │  │
+│   │  llama3.1:8b    │◄────────│   ┌──────────────────────────┐  │  │
+│   │  ~5GB RAM       │  calls  │   │  Docker Container        │  │  │
+│   │  port: 11434    │         │   │                          │  │  │
+│   │                 │         │   │  Node.js + Express       │  │  │
+│   │  Runs on Mac    │         │   │  Frontend (HTML/CSS/JS)  │  │  │
+│   │  directly       │         │   │  SQLite Database         │  │  │
+│   │  (fastest)      │         │   │  port: 3000              │  │  │
+│   └─────────────────┘         │   └──────────────────────────┘  │  │
+│                                └──────────────────────────────────┘  │
+│                                                                      │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │   KIND Cluster (local Kubernetes)                            │  │
+│   │                                                              │  │
+│   │   ┌─────────────┐    watches     ┌────────────────────────┐ │  │
+│   │   │   ArgoCD    │───────────────►│  GitHub (k8s manifests)│ │  │
+│   │   │             │◄───────────────│                        │ │  │
+│   │   └──────┬──────┘    sync        └────────────────────────┘ │  │
+│   │          │ deploys                                           │  │
+│   │   ┌──────▼──────┐                                           │  │
+│   │   │  App Pod    │                                           │  │
+│   │   │  (claude)   │                                           │  │
+│   │   └─────────────┘                                           │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │   JENKINS (Docker container)                                 │  │
+│   │                                                              │  │
+│   │   On every git push:                                         │  │
+│   │   1. Build Docker image                                      │  │
+│   │   2. Trivy security scan  ──► CRITICAL found? ──► BLOCKS ❌  │  │
+│   │   3. Push image to DockerHub                                 │  │
+│   │   4. Update k8s/deployment.yaml with new image tag          │  │
+│   │   5. Push manifest to GitHub ──► ArgoCD picks it up ✅      │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## CI/CD Pipeline Flow
+
+```
+You edit any file
+       │
+       ▼
+  git push → GitHub
+       │
+       ▼ (Poll SCM every 1 min)
+    Jenkins
+       │
+  ┌────▼────────────────────────┐
+  │ 1. Checkout code            │
+  │ 2. docker build             │
+  │ 3. trivy scan               │──► CRITICAL CVE? ──► ❌ Pipeline blocked
+  │ 4. docker push → DockerHub  │
+  │ 5. update k8s/deployment    │
+  │ 6. git push manifest        │
+  └────────────────────────────-┘
+       │
+       ▼
+  ArgoCD detects manifest change
+       │
+  ┌────▼──────────────────┐
+  │ Pull new image        │
+  │ Rolling pod update    │
+  │ Zero downtime   ✅    │
+  └───────────────────────┘
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| AI Model | Ollama + Llama 3.1 8B (local, free, private) |
+| Backend | Node.js + Express |
+| Frontend | Vanilla HTML/CSS/JS (single file) |
+| Database | SQLite (Docker volume — local only) |
+| Container Runtime | Docker + Colima |
+| Orchestration | Kubernetes (KIND — local cluster) |
+| CI | Jenkins (Docker container) |
+| CD | ArgoCD (GitOps) |
+| Security Scan | Trivy (blocks CRITICAL CVEs) |
+| Image Registry | DockerHub |
+| Source Control | GitHub (public — no secrets ever committed) |
 
 ---
 
 ## What You Get
 
-- **6 built-in AI experts** — Nutritionist, Life Advisor, Medical Info, Job Hunter, Finance Advisor, Legal Guide
-- **Persistent conversations** per expert — each chat is remembered in full
+- **6 built-in AI experts** — Nutritionist, Life Advisor, Medical Info, Job Hunter, Finance Advisor, Tech Expert
+- **Persistent memory** — each expert remembers your full conversation history
 - **Custom experts** — create your own with custom system prompts
-- **Fully local data** — SQLite database stored in a Docker volume on your machine
-- **Beautiful UI** — dark theme, streaming responses, markdown rendering
-- **Streaming responses** — see Claude's reply as it types
-
----
-
-## Security Notes
-
-> **Important:** The Claude model itself runs on Anthropic's servers — your messages are sent to `api.anthropic.com` to generate responses. This is unavoidable; Claude cannot run fully offline.
-
-**What IS local/private:**
-- The frontend app runs entirely on your machine (Docker container)
-- All conversation history is stored in a SQLite database on your machine
-- Your API key never leaves your machine (used only for direct API calls)
-- No analytics, no third-party services, no data brokers
-
-**What goes to Anthropic:**
-- Your messages and the conversation history (for context)
-- This is the same as using claude.ai directly
+- **100% free AI** — Ollama runs Llama 3.1 locally, no API costs ever
+- **100% private** — everything stays on your machine, nothing sent externally
+- **Streaming responses** — see the AI reply in real time as it types
+- **Full CI/CD** — push code and it deploys automatically
 
 ---
 
 ## Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed
-- An [Anthropic API key](https://console.anthropic.com)
+- Mac with 16GB RAM (recommended)
+- [Homebrew](https://brew.sh)
+- [Colima](https://github.com/abiosoft/colima) + Docker CLI
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [KIND](https://kind.sigs.k8s.io/)
+- [Ollama](https://ollama.com)
+- Jenkins running as Docker container
+- ArgoCD installed on KIND cluster
+- [DockerHub](https://hub.docker.com) account
+- [GitHub](https://github.com) account
 
 ---
 
-## Setup (5 minutes)
-
-### Step 1 — Copy the environment file
-```bash
-cp .env.example .env
-```
-
-### Step 2 — Add your API key
-Open `.env` and replace `sk-ant-your-key-here` with your actual key:
-```
-ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxxx
-```
-
-### Step 3 — Build and start
-```bash
-docker compose up --build -d
-```
-
-### Step 4 — Open in browser
-Visit: **http://localhost:3000**
-
----
-
-## Daily Usage
+## Quick Start (Local Docker only — no CI/CD)
 
 ```bash
-# Start
-docker compose up -d
+# 1. Install and start Ollama
+brew install ollama
+ollama serve                    # keep this terminal open
 
-# Stop
-docker compose down
+# 2. Pull the model (one time download ~5GB)
+ollama pull llama3.1:8b
 
-# View logs
-docker compose logs -f
+# 3. Start Colima
+colima start --cpu 2 --memory 4
 
-# Rebuild after code changes
-docker compose up --build -d
+# 4. Build and run
+docker-compose up --build -d
+
+# 5. Open browser
+open http://localhost:3000
 ```
 
 ---
 
-## Changing the Port
+## Full Setup (CI/CD with Jenkins + ArgoCD + KIND)
 
-If port 3000 is taken, edit both files:
-
-**`.env`:**
-```
-PORT=8080
-```
-
-**`docker-compose.yml`:**
-```yaml
-ports:
-  - "8080:8080"
+### Start infrastructure
+```bash
+colima start --cpu 2 --memory 4
+ollama serve
+ollama pull llama3.1:8b         # if not already pulled
 ```
 
-Then restart: `docker compose up -d`
+### Apply Kubernetes resources
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/pvc.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+```
+
+### Create API secret on cluster (never touches GitHub)
+```bash
+chmod +x scripts/create-secret.sh
+./scripts/create-secret.sh
+```
+
+### Access the app
+```bash
+kubectl port-forward svc/claude-local 3000:3000 -n claude-local
+open http://localhost:3000
+```
+
+### Access ArgoCD
+```bash
+kubectl port-forward svc/argocd-server 8081:443 -n argocd
+
+# Get admin password
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d && echo
+```
+Open **https://localhost:8081**
+
+### Access Jenkins
+Open **http://localhost:8080**
 
 ---
 
-## Your Data
+## Daily Workflow
 
-All conversations are stored in a Docker volume named `claude-data`.
-
-**Backup your conversations:**
 ```bash
+# Start everything
+~/start-local-ai.sh
+
+# Stop everything
+~/stop-local-ai.sh
+```
+
+### Deploy a change
+```bash
+# Edit any file then:
+git add .
+git commit -m "your change"
+git pull --rebase origin main
+git push
+
+# Jenkins detects it within 1 minute → builds → scans → deploys
+# Monitor: http://localhost:8080  (Jenkins)
+#          https://localhost:8081 (ArgoCD)
+#          http://localhost:3000  (App)
+```
+
+---
+
+## Useful Commands
+
+```bash
+# ── Ollama ────────────────────────────────────────────
+ollama serve                                  # start Ollama
+ollama ps                                     # check running models
+ollama stop llama3.1:8b                       # unload model (free 5GB RAM)
+ollama list                                   # list installed models
+ollama pull llama3.2:3b                       # pull lighter/faster model
+
+# ── Docker ────────────────────────────────────────────
+docker-compose up --build -d                  # build and start
+docker-compose down                           # stop
+docker-compose logs -f                        # view logs
+
+# ── Kubernetes ────────────────────────────────────────
+kubectl get all -n claude-local               # all resources
+kubectl get pods -n claude-local              # pod status
+kubectl logs -f deployment/claude-local -n claude-local
+kubectl rollout restart deployment/claude-local -n claude-local
+kubectl rollout status deployment/claude-local -n claude-local
+
+# ── ArgoCD ────────────────────────────────────────────
+argocd login localhost:8081 --insecure --username admin
+argocd app list                               # list apps
+argocd app sync claude-local                  # manual sync
+argocd app get claude-local                   # app details
+argocd repo list                              # check repo connections
+
+# ── Colima ────────────────────────────────────────────
+colima start --cpu 2 --memory 4               # start
+colima stop                                   # stop
+colima status                                 # check status
+```
+
+---
+
+## Backup & Restore
+
+```bash
+# Backup conversations
 docker run --rm -v claude-data:/data -v $(pwd):/backup alpine \
   cp /data/conversations.db /backup/conversations-backup.db
-```
 
-**Restore from backup:**
-```bash
+# Restore conversations
 docker run --rm -v claude-data:/data -v $(pwd):/backup alpine \
   cp /backup/conversations-backup.db /data/conversations.db
 ```
 
 ---
 
+## Changing the AI Model
+
+Edit `docker-compose.yml`:
+```yaml
+environment:
+  - OLLAMA_MODEL=llama3.2:3b    # lighter, faster
+  # - OLLAMA_MODEL=mistral      # better reasoning
+  # - OLLAMA_MODEL=deepseek-r1:8b  # good for coding
+```
+
+Pull the model first, then rebuild:
+```bash
+ollama pull llama3.2:3b
+docker-compose up --build -d
+```
+
+---
+
 ## Adding Custom Experts
 
-Click **"+ Add Expert"** in the sidebar. You can define:
+Click **"+ Add Expert"** in the sidebar:
 - **Icon** — any emoji
-- **Name** — e.g. "Fitness Coach"
-- **Color** — accent color for the expert
+- **Name** — e.g. Fitness Coach
+- **Color** — accent colour
 - **Description** — short subtitle
-- **System Prompt** — full instructions for how Claude should behave
+- **System Prompt** — full personality and instructions
 
-### Example System Prompt
-```
-You are Coach Sam, an expert personal trainer with 10 years of experience 
-in strength training, HIIT, and rehabilitation. You create personalized 
-workout plans based on the user's fitness level, goals, equipment, and 
-schedule. Remember everything the user tells you about their body, 
-injuries, and progress throughout our conversation.
-```
+Experts added via UI are saved in the database and survive rebuilds. ✅
+
+---
+
+## Security Model
+
+| Secret | Where it lives | In GitHub? |
+|---|---|---|
+| AI model | Your Mac (Ollama) | ❌ Never |
+| Conversation history | Docker volume (SQLite) | ❌ Never |
+| DockerHub password | Jenkins Credentials | ❌ Never |
+| GitHub PAT | Jenkins Credentials | ❌ Never |
+| App source code | GitHub | ✅ Safe |
+| k8s manifests | GitHub | ✅ Safe (no secrets) |
 
 ---
 
 ## Troubleshooting
 
-**"API key not configured" banner:**  
-→ Make sure your `.env` file has `ANTHROPIC_API_KEY=sk-ant-...` and restart.
+**"Cannot connect to Ollama" banner:**
+```bash
+ollama serve    # make sure this is running in a terminal
+```
 
-**Port already in use:**  
-→ Change the port (see above) or run `lsof -i :3000` to find what's using it.
+**Pod not starting:**
+```bash
+kubectl describe pod -n claude-local
+kubectl logs -n claude-local -l app=claude-local
+```
 
-**Container won't start:**  
-→ Check logs: `docker compose logs`
+**ArgoCD sync unknown:**
+```bash
+argocd app get claude-local
+argocd app sync claude-local
+```
 
-**Conversations not saving:**  
-→ The Docker volume may have a permissions issue. Try `docker compose down -v` then `docker compose up --build -d` (warning: clears data).
+**Jenkins can't run Docker:**
+```bash
+docker exec -u root jenkins chmod 666 /var/run/docker.sock
+```
+
+**Git push rejected:**
+```bash
+git pull --rebase origin main && git push
+```
+
+**Port already in use:**
+```bash
+lsof -i :3000
+```
 
 ---
 
 ## Project Structure
 
 ```
-claude-local/
+local-claude/
 ├── backend/
-│   ├── server.js          ← Express API server
+│   ├── server.js              ← Express API + Ollama integration
 │   └── package.json
 ├── frontend/
 │   └── public/
-│       └── index.html     ← Single-page frontend
+│       └── index.html         ← Complete single-page UI
+├── k8s/
+│   ├── namespace.yaml         ← Kubernetes namespace
+│   ├── pvc.yaml               ← Persistent storage for SQLite
+│   ├── deployment.yaml        ← App deployment (Jenkins updates image tag)
+│   ├── service.yaml           ← ClusterIP service (no external port)
+│   ├── argocd-app.yaml        ← ArgoCD GitOps application
+│   └── secret.template.yaml  ← Template only — never commit real values
+├── scripts/
+│   └── create-secret.sh       ← Safely injects secrets onto cluster
 ├── Dockerfile
 ├── docker-compose.yml
-├── .env.example
+├── Jenkinsfile                ← Full CI pipeline
+├── .env.example               ← Safe placeholder — no real values
+├── .gitignore                 ← Blocks secrets from GitHub
 └── README.md
 ```
 
 ---
 
-## Customizing the UI
-
-The entire frontend is in `frontend/public/index.html` — a single self-contained file.  
-After editing, rebuild: `docker compose up --build -d`
-
----
-
-Made for personal use — keep your AI conversations private and organized.
+Built for personal use — free, private, and fully yours.
