@@ -11,7 +11,7 @@ spec:
 
   source:
     # ── Change this to your actual GitHub repo URL
-    repoURL: https://github.com/AmolJadhav97/claude-local.git
+    repoURL: https://github.com/AmolJadhav97/local-claude.git
     targetRevision: main
     # ── ArgoCD watches only the k8s/ folder
     path: k8s
