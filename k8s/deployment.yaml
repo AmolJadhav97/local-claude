@@ -24,7 +24,7 @@ spec:
       containers:
         - name: claude-local
           # ── Jenkins CI updates this image tag automatically on every frontend push
-          image: amoljadhav1997/local-claude:32-4ad0d9f
+          image: amoljadhav1997/local-claude:33-bf1af57
           imagePullPolicy: Always
 
           ports:
