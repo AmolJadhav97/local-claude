@@ -560,7 +560,7 @@
   <div class="main">
     <!-- API Key Banner (hidden by default) -->
     <div class="api-banner" id="api-banner" style="display:none">
-      ⚠️ API key not set. Add <code>ANTHROPIC_API_KEY=your_key</code> to your <code>.env</code> file and restart.
+      ⚠️ Cannot connect to Ollama. Run <code>ollama serve</code> in your terminal then refresh.
     </div>
 
     <!-- Chat Header -->
@@ -653,7 +653,7 @@ async function checkHealth() {
   try {
     const r = await fetch('/api/health');
     const d = await r.json();
-    if (!d.apiKeyConfigured) {
+    if (!d.ollamaConnected) {
       document.getElementById('api-banner').style.display = 'flex';
       state.apiOk = false;
     }
