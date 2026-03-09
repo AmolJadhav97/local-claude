@@ -24,28 +24,6 @@ pipeline {
             }
         }
 
-        // ── Stage 2: Skip if no frontend changes
-        stage('Detect Frontend Changes') {
-            steps {
-                script {
-                    def changedFiles = sh(
-                        script: "git diff --name-only HEAD~1 HEAD || git diff --name-only HEAD",
-                        returnStdout: true
-                    ).trim()
-
-                    echo "Changed files:\n${changedFiles}"
-
-                    if (!changedFiles.contains('frontend/')) {
-                        echo "⏭  No frontend changes detected — skipping pipeline."
-                        currentBuild.result = 'NOT_BUILT'
-                        error("No frontend changes. Pipeline skipped.")
-                    }
-
-                    echo "✅ Frontend changes detected — continuing pipeline."
-                }
-            }
-        }
-
         // ── Stage 3: Build Docker image
         stage('Build Docker Image') {
             steps {
